@@ -1,0 +1,2 @@
+<Button onClick="pass" text="Pass" position="0 0 -30" width="300" height="100" color="#ffffff" fontSize="50" padding="0" textAlignment="MiddleCenter" textColor="#ffffff" colors="#007bc7|#009eff|#106294|#5c788a">
+</Button>

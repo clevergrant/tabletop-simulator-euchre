@@ -2,7 +2,7 @@
 local DISTANCE_FROM_CENTER = 11
 
 local HIDDEN = false
-local POS = {x = 0, y = 0.8, z = DISTANCE_FROM_CENTER * -1}
+local POS = {x = 0, y = Global.getVar('hiddenY'), z = DISTANCE_FROM_CENTER * -1}
 local ROT = {x = 0, y = 0, z = 0}
 
 function onLoad()
@@ -10,7 +10,7 @@ function onLoad()
 end
 
 function render()
-	local y = HIDDEN and Global.getVar('hiddenY') or 0.8
+	local y = Global.getVar('hiddenY')
 	local x = HIDDEN and 180 or 0
 	self.setPositionSmooth({POS.x, y, POS.z}, false, true)
 	self.setRotationSmooth({x, ROT.y, ROT.z}, false, true)

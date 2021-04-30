@@ -5,7 +5,7 @@ function onLoad()
 	-- print('POS: ', self.getPosition())
 	-- print('ROT: ', self.getRotation())
 	setPos()
-	self.setLock(false)
+	self.setLock(true)
 end
 
 function setPos()

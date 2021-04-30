@@ -1,6 +1,6 @@
 -- Red Plus: b60836
 function onLoad()
-	self.setPosition({8.5, 1.1, -8})
+	self.setPosition({8.5, 0.7, -8})
 	self.setLock(true)
 end
 

@@ -21,17 +21,90 @@ function onLoad()
 	Global.setVar('redPlusBtn', getObjectFromGUID('b60836'))
 	Global.setVar('blackPlusBtn', getObjectFromGUID('cd3f3f'))
 
-	setupTurn()
+	Global.setVar('colors', {'Blue', 'Red', 'Teal', 'Yellow'})
+
+	Global.setVar('playArea', {
+		Blue = getObjectFromGUID('479892'),
+		Red = getObjectFromGUID('cf95dc'),
+		Teal = getObjectFromGUID('69778a'),
+		Yellow = getObjectFromGUID('db87bb')
+	})
+
+	Global.setVar('winArea', {
+		Blue = {POS = {x = -3, y = 1, z = -7}, ROT = {0, 180, 0}},
+		Red = {POS = {x = -7, y = 1, z = 3}, ROT = {0, 270, 0}},
+		Teal = {POS = {x = 3, y = 1, z = 7}, ROT = {0, 0, 0}},
+		Yellow = {POS = {x = 7, y = 1, z = -3}, ROT = {0, 90, 0}}
+	})
+
+	Global.setVar('winBtns', {
+		Blue = getObjectFromGUID('bb3521'),
+		Red = getObjectFromGUID('170338'),
+		Teal = getObjectFromGUID('92cbc1'),
+		Yellow = getObjectFromGUID('976215')
+	})
+
+	Global.setVar('selectingDiscard', false)
+
+	Global.setVar('hiddenY', -2)
+
+	Global.setVar('dealer', 'Blue')
+
+	Global.setVar('phase', 1)
+	Global.setVar('plays', 0)
+	Global.setVar('cardRefs', {Blue = nil, Red = nil, Teal = nil, Yellow = nil})
+
+	Wait.time(function()
+		if Turns.turn_color ~= 'Blue' then
+			Turns.turn_color = 'Blue'
+		end
+	end, 1)
+
 end
 
 -- The onUpdate event is called once per frame.
 -- function onUpdate()
 -- end
 
-function onPlayerTurn(player, last_player)
-	print('current player: ', player)
-	print('last player: ', last_player)
+function onPlayerTurn(player, prev_player)
 	setupTurn()
+end
+
+function setupTurn()
+
+	local phase = Global.getVar('phase')
+	local deck = Global.getVar('deck')
+	local dealBtn = Global.getVar('dealBtn')
+	local resetDeckBtn = Global.getVar('resetDeckBtn')
+	local passBtn = Global.getVar('passBtn')
+	-- local goAloneBtn = Global.getVar('goAloneBtn')
+	local pickupBtn = Global.getVar('pickupBtn')
+
+	if phase == 1 then
+
+		Global.setVar('dealer', Turns.turn_color)
+		Global.setVar('tries', 0)
+		deck.reset()
+
+		local dealer = Global.getVar('dealer')
+
+		deck.call('face', {color = dealer})
+		dealBtn.call('face', {color = dealer})
+		resetDeckBtn.call('face', {color = dealer})
+
+		dealBtn.call('show')
+
+	elseif phase == 2 then
+
+		passBtn.call('face', {color = Turns.turn_color})
+		passBtn.call('show')
+		pickupBtn.call('face', {color = Turns.turn_color})
+		pickupBtn.call('show')
+
+	elseif phase == 3 then
+		broadcastToColor('Discard a card from your hand.', Global.getVar('dealer'),
+                 		{1, 1, 1})
+	end
 end
 
 function dealTrick()
@@ -85,131 +158,68 @@ function dealTrick()
 			flip = true,
 			position = deckPosition,
 			smooth = true,
-			callback_function = setTrumpCard
+			callback_function = function(card)
+				Global.setVar('trump', card)
+				Wait.frames(function()
+					card.setLock(true)
+					Global.setVar('phase', 2)
+					Turns.turn_color = Turns.getNextTurnColor()
+				end, 40)
+			end
 		})
 		deck.setLock(true)
 	end, 300)
-
-	Wait.frames(function()
-		Global.getVar('passBtn').call('show')
-		Global.getVar('goAloneBtn').call('show')
-		Global.getVar('pickupBtn').call('show')
-	end, 400)
-end
-
-function setTrumpCard(card)
-	Global.setVar('TRUMPCARD', card)
-	Wait.frames(function()
-		card.setLock(true)
-	end, 10)
-end
-
-function setupTurn()
-
-	Global.setVar('TRIES', 0)
-
-	local deck = Global.getVar('deck')
-	deck.reset()
-
-	local dealBtn = Global.getVar('dealBtn')
-	local resetDeckBtn = Global.getVar('resetDeckBtn')
-
-	local passBtn = Global.getVar('passBtn')
-	local goAloneBtn = Global.getVar('goAloneBtn')
-	local pickupBtn = Global.getVar('pickupBtn')
-
-	local nextColor = Turns.getNextTurnColor()
-
-	dealBtn.call('show')
-
-	passBtn.call('hide')
-	goAloneBtn.call('hide')
-	pickupBtn.call('hide')
-
-	-- move all necessary pieces
-	deck.call('face', {color = Turns.turn_color})
-	dealBtn.call('face', {color = Turns.turn_color})
-	resetDeckBtn.call('face', {color = Turns.turn_color})
-	goAloneBtn.call('face', {color = nextColor})
-	passBtn.call('face', {color = nextColor})
-	pickupBtn.call('face', {color = nextColor})
 
 end
 
 function handlePass()
 
-	Global.setVar('TRIES', Global.getVar('TRIES') + 1)
-	local TRIES = Global.getVar('TRIES')
+	Global.getVar('passBtn').call('hide')
+	Global.getVar('pickupBtn').call('hide')
 
-	local trump = Global.getVar('TRUMPCARD')
+	Global.setVar('tries', Global.getVar('tries') + 1)
+	local tries = Global.getVar('tries')
 
-	if trump == nil then
+	local trump = Global.getVar('trump')
+
+	if tries < 4 and trump == nil then
 		print('You need to deal the cards first!')
 		return
 	end
 
-	local turnOrder = getTurnOrder()
-
-	local goAloneBtn = Global.getVar('goAloneBtn')
-	local passBtn = Global.getVar('passBtn')
-	local pickupBtn = Global.getVar('pickupBtn')
-
-	if TRIES == 1 then
-		goAloneBtn.call('face', {color = turnOrder[2]})
-		passBtn.call('face', {color = turnOrder[2]})
-		pickupBtn.call('face', {color = turnOrder[2]})
-	elseif TRIES == 2 then
-		goAloneBtn.call('face', {color = turnOrder[3]})
-		passBtn.call('face', {color = turnOrder[3]})
-		pickupBtn.call('face', {color = turnOrder[3]})
-	elseif TRIES == 3 then
-		goAloneBtn.call('face', {color = turnOrder[4]})
-		passBtn.call('face', {color = turnOrder[4]})
-		pickupBtn.call('face', {color = turnOrder[4]})
-	elseif TRIES == 4 then
+	if tries == 4 then
 		-- flip over the kiddie and start over
 		local deck = Global.getVar('deck')
 		trump.setLock(false)
 		trump.flip()
 		deck.setLock(false)
-		-- deck = deck.putObject(trump)
-		deck.setLock(true)
 		Wait.time(function()
-			trump.setLock(true)
+			deck.putObject(trump)
+			deck.setLock(true)
+			local pickupBtnUI = Global.getVar('pickupBtn').UI
+			pickupBtnUI.setAttribute('pickup-button', 'text', 'Choose Suit')
+			pickupBtnUI.setAttribute('pickup-button', 'textColor', '#ffffff')
 		end, 1)
-		goAloneBtn.call('face', {color = turnOrder[1]})
-		passBtn.call('face', {color = turnOrder[1]})
-		pickupBtn.call('face', {color = turnOrder[1]})
-	elseif TRIES == 5 then
-		goAloneBtn.call('face', {color = turnOrder[2]})
-		passBtn.call('face', {color = turnOrder[2]})
-		pickupBtn.call('face', {color = turnOrder[2]})
-	elseif TRIES == 6 then
-		goAloneBtn.call('face', {color = turnOrder[3]})
-		passBtn.call('face', {color = turnOrder[3]})
-		pickupBtn.call('face', {color = turnOrder[3]})
-	elseif TRIES == 7 then
-		goAloneBtn.call('face', {color = turnOrder[4]})
-		passBtn.call('face', {color = turnOrder[4]})
-		pickupBtn.call('face', {color = turnOrder[4]})
-	else
-		Global.getVar('resetDeckBtn').call('resetDeck')
-		goAloneBtn.call('face', {color = turnOrder[1]})
-		passBtn.call('face', {color = turnOrder[1]})
-		pickupBtn.call('face', {color = turnOrder[1]})
-		TRIES = 8;
+	elseif tries == 8 then
+		Global.getVar('deck').reset()
+		Global.setVar('phase', 1)
+		Global.getVar('passBtn').call('hide')
+		Global.getVar('pickupBtn').call('hide')
 	end
+	Wait.frames(function()
+		Turns.turn_color = Turns.getNextTurnColor()
+	end, 10)
 end
 
 function getTurnOrder()
-	if Turns.turn_color == 'White' then
-		return {'Orange', 'Green', 'Purple', 'White'}
-	elseif Turns.turn_color == 'Orange' then
-		return {'Green', 'Purple', 'White', 'Orange'}
-	elseif Turns.turn_color == 'Green' then
-		return {'Purple', 'White', 'Orange', 'Green'}
+	if Turns.turn_color == 'Blue' then
+		return {'Red', 'Teal', 'Yellow', 'Blue'}
+	elseif Turns.turn_color == 'Red' then
+		return {'Teal', 'Yellow', 'Blue', 'Red'}
+	elseif Turns.turn_color == 'Teal' then
+		return {'Yellow', 'Blue', 'Red', 'Teal'}
 	else
-		return {'White', 'Orange', 'Green', 'Purple'}
+		return {'Blue', 'Red', 'Teal', 'Yellow'}
 	end
 end
 
@@ -219,28 +229,115 @@ function handlePickup()
 	Global.getVar('goAloneBtn').call('hide')
 
 	-- put the trump in the dealer's hand
-	local trump = Global.getVar('TRUMPCARD')
-	local dealer = Turns.turn_color
+	local trump = Global.getVar('trump')
+	local dealer = Global.getVar('dealer')
 
-	local colors = getTurnOrder()
-
-	-- for _, player in ipairs(Player.getPlayers()) do
-	-- 	if player.
-	-- end
-
-	trump.setLock(false)
-	trump.use_hands = true
-	trump.deal(1, dealer)
+	if trump ~= nil then
+		-- deck.setLock(false)
+		trump.setLock(false)
+		trump.use_hands = true
+		trump.deal(1, dealer)
+		Global.setVar('selectingDiscard', true)
+		Global.setVar('phase', 3)
+		Turns.turn_color = dealer
+	else
+		Global.setVar('phase', 4)
+		local leftOfDealer = getLeftOfDealer()
+		if Turns.turn_color ~= leftOfDealer then
+			Turns.turn_color = leftOfDealer
+		end
+	end
 end
 
 function onPlayerAction(player, action, targets)
+	handleDiscard(player, action, targets)
+	handlePlayCard(player, action, targets)
+end
 
-	print(player.drag)
+function handleDiscard(player, action, targets)
 
-	-- local holding = player.getHoldingObjects()
-	-- local size = 0
-	-- for _, obj in ipairs(holding) do
-	-- 	print(obj)
-	-- 	size = size + 1
-	-- end
+	local discarding = Global.getVar('selectingDiscard')
+	local isPickup = action == Player.Action.PickUp
+	local isDealer = player.color == Turns.turn_color
+
+	if discarding and isPickup and isDealer then
+
+		local card = targets[1]
+		local deck = Global.getVar('deck')
+
+		deck.setLock(false)
+		deck.putObject(card)
+		deck.setLock(true)
+
+		broadcastToAll(player.steam_name .. ' has discarded.')
+
+		-- deck.call('hide')
+
+		for _, p in ipairs(Player.getPlayers()) do
+			if p.color == Global.getVar('currentTurn') then
+				broadcastToAll('It\'s ' .. p.steam_name .. '\'s turn.')
+			end
+		end
+
+		-- it sets this too quickly by default, this just allows the card
+		-- to finish being discarded before continuing
+		Wait.time(function()
+			Global.setVar('selectingDiscard', false)
+		end, 1)
+
+		Global.setVar('phase', 4)
+		Turns.turn_color = Turns.getNextTurnColor()
+	end
+end
+
+function handlePlayCard(player, action, targets)
+
+	local discarding = Global.getVar('selectingDiscard')
+	local isPickup = action == Player.Action.PickUp
+	local isPlayersTurn = player.color == Turns.turn_color
+
+	if not discarding and isPickup and isPlayersTurn then
+
+		Global.setVar('plays', Global.getVar('plays') + 1)
+
+		local card = targets[1]
+		local playArea = Global.getVar('playArea')[Turns.turn_color]
+
+		card.setPositionSmooth(playArea.getPosition(), false, true)
+		card.setLock(true)
+
+		checkTrick()
+
+	end
+end
+
+function checkTrick()
+	if Global.getVar('plays') >= 4 then
+		local winBtns = Global.getVar('winBtns')
+		for _, color in ipairs(Global.getVar('colors')) do
+			winBtns[color].call('show')
+		end
+	else
+		Turns.turn_color = Turns.getNextTurnColor()
+	end
+end
+
+function handleTrickWin(color)
+	print(color .. ' wins!')
+	if Turns.turn_color ~= color then
+		Turns.turn_color = color
+	end
+end
+
+function getLeftOfDealer()
+	local dealer = Global.getVar('dealer')
+	if dealer == 'Blue' then
+		return 'Red'
+	elseif dealer == 'Red' then
+		return 'Teal'
+	elseif dealer == 'Teal' then
+		return 'Yellow'
+	else
+		return 'Blue'
+	end
 end

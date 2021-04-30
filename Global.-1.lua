@@ -53,6 +53,7 @@ function onLoad()
 	Global.setVar('phase', 1)
 	Global.setVar('plays', 0)
 	Global.setVar('cardRefs', {Blue = nil, Red = nil, Teal = nil, Yellow = nil})
+	Global.setVar('tricksPlayed', 0)
 
 	Wait.time(function()
 		if Turns.turn_color ~= 'Blue' then
@@ -306,6 +307,8 @@ function handlePlayCard(player, action, targets)
 		card.setPositionSmooth(playArea.getPosition(), false, true)
 		card.setLock(true)
 
+		Global.getVar('cardRefs')[Turns.turn_color] = card
+
 		checkTrick()
 
 	end
@@ -313,6 +316,7 @@ end
 
 function checkTrick()
 	if Global.getVar('plays') >= 4 then
+		Global.setVar('tricksPlayed', Global.getVar('tricksPlayed') + 1)
 		local winBtns = Global.getVar('winBtns')
 		for _, color in ipairs(Global.getVar('colors')) do
 			winBtns[color].call('show')
@@ -324,8 +328,29 @@ end
 
 function handleTrickWin(color)
 	print(color .. ' wins!')
-	if Turns.turn_color ~= color then
-		Turns.turn_color = color
+	Global.setVar('plays', 0)
+
+	for _, c in ipairs(Global.getVar('colors')) do
+		local card = Global.getVar('cardRefs')[c]
+		card.setPositionSmooth(Global.getVar('winArea')[color].POS, false, true)
+		card.setRotationSmooth(Global.getVar('winArea')[color].ROT, false, true)
+		Wait.time(function()
+			card.setLock(true)
+		end, 1)
+		Global.getVar('winBtns')[c].call('hide')
+	end
+
+	if Global.getVar('tricksPlayed') >= 5 then
+		local newDealer = getLeftOfDealer()
+		Global.setVar('dealer', newDealer)
+		Global.setVar('tricksPlayed', 0)
+		Global.setVar('phase', 1)
+		Turns.turn_color = newDealer
+	else
+		print(color .. ' starts the next trick.')
+		if Turns.turn_color ~= color then
+			Turns.turn_color = color
+		end
 	end
 end
 
